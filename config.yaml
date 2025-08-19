@@ -1,0 +1,74 @@
+telegram:
+  bot_token: ""
+  channel_id: "@CloudNativeAddisAbaba" 
+  parse_mode: "MarkdownV2"
+
+scheduler:
+  cron_spec: "0 9 * * *" # 09:00 daily
+  batch_size: 4 # max posts per run
+
+filters:
+  max_age_days: 21
+  min_score: 0.6
+
+keywords:
+  positive:
+    [
+      "kubernetes",
+      "cncf",
+      "k8s",
+      "envoy",
+      "istio",
+      "linkerd",
+      "prometheus",
+      "opentelemetry",
+      "otel",
+      "ebpf",
+      "wasm",
+      "argo",
+      "flux",
+      "helm",
+      "cilium",
+      "kyverno",
+      "trivy",
+      "sigstore",
+      "telemetry",
+      "observability",
+      "supply chain",
+      "slsa",
+      "containerd",
+      "cri-o",
+    ]
+  negative: ["marketing webinar", "press release", "sponsored"]
+
+sources:
+  - name: "CNCF Blog"
+    type: "rss"
+    weight: 1.0
+    url: "https://www.cncf.io/feed/"
+    tags: ["news", "foundation", "projects"]
+  - name: "Kubernetes Blog"
+    type: "rss"
+    weight: 1.0
+    url: "https://kubernetes.io/feed.xml"
+    tags: ["kubernetes", "sig"]
+  - name: "Prometheus Blog"
+    type: "rss"
+    weight: 0.9
+    url: "https://prometheus.io/blog/index.xml"
+    tags: ["prometheus", "observability"]
+  - name: "OpenTelemetry Blog"
+    type: "rss"
+    weight: 0.9
+    url: "https://opentelemetry.io/feed.xml"
+    tags: ["otel", "observability"]
+  - name: "Envoy Proxy"
+    type: "rss"
+    weight: 0.8
+    url: "https://www.envoyproxy.io/feed.xml"
+    tags: ["envoy", "proxy"]
+  - name: "CNCF Jobs/Opportunities (Community)"
+    type: "rss"
+    weight: 0.7
+    url: "https://community.cncf.io/feed/"
+    tags: ["events", "opportunities"]
