@@ -3,27 +3,23 @@ package main
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+
+	"github.com/aws/aws-lambda-go/lambda"
 
 	"github.com/LibenHailu/cncg-bot/internal/config"
 	"github.com/LibenHailu/cncg-bot/internal/core"
 	"github.com/LibenHailu/cncg-bot/internal/poster"
-	"github.com/LibenHailu/cncg-bot/internal/schedule"
 	"github.com/LibenHailu/cncg-bot/internal/store"
 )
 
-func main() {
-	cfgPath := os.Getenv("BOT_CONFIG")
-	if cfgPath == "" { cfgPath = "config.yaml" }
+func handler(ctx context.Context) error {
 
-	cfg, err := config.Load(cfgPath)
-	if err != nil { log.Fatal("config:", err) }
+	cfg := config.Load()
 
 	db, err := store.Open(cfg.DBPath)
-	if err != nil { log.Fatal("db:", err) }
+	if err != nil {
+		log.Fatal("db:", err)
+	}
 
 	p := core.Pipeline{
 		Filters: core.Filters{
@@ -41,31 +37,37 @@ func main() {
 	}
 
 	tg, err := poster.New(cfg.Telegram.BotToken, cfg.Telegram.ChannelID, cfg.Telegram.ParseMode)
-	if err != nil { log.Fatal("telegram:", err) }
-
-	// warm run on startup
-	ctx := context.Background()
-	if err := p.RunOnce(ctx); err != nil {
-		db.LogError(ctx,"pipeline", err.Error())
+	if err != nil {
+		return err
 	}
 
-	// start scheduler
-	job := schedule.Job{
-		CronSpec: cfg.Scheduler.CronSpec,
-		BatchSize: cfg.Scheduler.BatchSize,
-		DB: db,
-		Poster: tg,
-		MinScore: cfg.Filters.MinScore,
+	// Run pipeline once
+	err = p.RunOnce(ctx)
+	if err != nil {
+		db.LogError(ctx, "pipeline", err.Error())
+		return err
 	}
-	c, err := job.Start(ctx)
-	if err != nil { log.Fatal("cron:", err) }
-	log.Println("bot started")
 
-	// graceful shutdown
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
-	log.Println("shutting down...")
-	c.Stop()
-	time.Sleep(500 * time.Millisecond)
+	// Send next batch
+	items, err := db.NextUnposted(ctx, cfg.Filters.MinScore, cfg.Scheduler.BatchSize)
+	if err != nil {
+		db.LogError(ctx, "schedule:select", err.Error())
+		return err
+	}
+
+	for _, it := range items {
+		if err := tg.PostItem(ctx, it); err != nil {
+			db.LogError(ctx, "telegram:send", err.Error())
+			continue
+		}
+		if err := db.MarkPosted(ctx, it.ID); err != nil {
+			log.Println("mark posted error:", err)
+		}
+	}
+
+	return nil
+}
+
+func main() {
+	lambda.Start(handler)
 }
