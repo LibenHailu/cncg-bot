@@ -96,7 +96,7 @@ func (p *Pipeline) scoreItem(text string, sourceWeight float64) float64 {
 	if score > 1 {
 		score = 1
 	}
-	if score >= 0.2 {
+	if score >= 0 {
 		return 1
 	}
 
