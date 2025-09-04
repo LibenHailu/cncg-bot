@@ -41,7 +41,7 @@ jobs:
           mkdir -p build
           # Compile for Lambda (Linux, x86_64) with lambda.norpc
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags lambda.norpc -o build/bootstrap ./cmd/bot
-          cd build && zip lambda.zip bootstrap
+          cd build && zip myFunction.zip bootstrap
 
       - name: Upload Lambda artifact
         uses: actions/upload-artifact@v4
